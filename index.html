@@ -28,6 +28,8 @@
      (Entra > App registrations > OXEFIT Tracker > Authentication).
      ============================================================ -->
 <script>
+window.__OXE_VERSION__ = "v1.0";   // ← bump this one line on each release
+try { document.title = "OxeFit Distribution Builder " + window.__OXE_VERSION__ + " — Core Velocity"; } catch (e) {}
 window.MS_CONFIG = {
   enabled: true,
   clientId: "cd1b7f5f-5ff9-4066-ab4f-06f270a94fcb",                 // OXEFIT Tracker — Azure app (reused)
@@ -123,14 +125,16 @@ window.MS_CONFIG = {
       + '<div style="font-size:18px;font-weight:700;margin-bottom:6px;">OxeFit Distribution Builder</div>'
       + '<div style="color:'+BRAND.muted+';font-size:13px;margin-bottom:22px;">Core Velocity · admin access only</div>'
       + '<button id="oxeSignIn" style="width:100%;background:'+BRAND.accent+';color:#fff;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Sign in with Microsoft</button>'
-      + '<div id="oxeMsg" style="color:'+BRAND.red+';font-size:12px;margin-top:12px;min-height:16px;"></div>'));
+      + '<div id="oxeMsg" style="color:'+BRAND.red+';font-size:12px;margin-top:12px;min-height:16px;"></div>'
+      + '<div style="color:'+BRAND.muted+';font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.4px;margin-top:6px;">'+(window.__OXE_VERSION__||'')+'</div>'));
     document.getElementById("oxeSignIn").onclick = onClick;
   }
   function renderDenied(email){
     screen(card(mark()
       + '<div style="font-size:18px;font-weight:700;margin-bottom:6px;color:'+BRAND.red+';">Access denied</div>'
       + '<div style="color:'+BRAND.muted+';font-size:13px;margin-bottom:20px;">'+ (email?('"'+email+'" is'):'This account is') +' not authorized for this tool. Admin access only.</div>'
-      + '<button onclick="window.__oxeSignOut&&window.__oxeSignOut()" style="background:'+BRAND.bg+';color:'+BRAND.ink+';border:1px solid '+BRAND.line+';border-radius:9px;padding:10px 16px;font-size:13px;cursor:pointer;">Sign in as someone else</button>'));
+      + '<button onclick="window.__oxeSignOut&&window.__oxeSignOut()" style="background:'+BRAND.bg+';color:'+BRAND.ink+';border:1px solid '+BRAND.line+';border-radius:9px;padding:10px 16px;font-size:13px;cursor:pointer;">Sign in as someone else</button>'
+      + '<div style="color:'+BRAND.muted+';font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.4px;margin-top:16px;">'+(window.__OXE_VERSION__||'')+'</div>'));
   }
 
   window.__oxeBoot = function(){
@@ -204,6 +208,7 @@ const { useState, useEffect, useMemo, useRef } = React;
    ========================================================================= */
 
 const STORAGE_KEY = "oxefit_distribution_state_v1";
+const APP_VERSION = (typeof window !== "undefined" && window.__OXE_VERSION__) || "v1.0";
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -648,7 +653,7 @@ function App() {
         <div className="brand">
           <span className="brandMark">CV</span>
           <div>
-            <div className="brandTitle">Distribution Builder</div>
+            <div className="brandTitle">Distribution Builder <span className="verTag">{APP_VERSION}</span></div>
             <div className="brandSub">{state.distributor} · global distributor for <b>OxeFit</b></div>
           </div>
         </div>
@@ -1719,6 +1724,7 @@ function Style() {
 .brand{display:flex;gap:13px;align-items:center}
 .brandMark{width:38px;height:38px;border-radius:9px;background:var(--accent);color:#fff;font-weight:800;display:grid;place-items:center;font-size:15px;letter-spacing:.5px}
 .brandTitle{font-weight:700;font-size:16px;letter-spacing:-.2px}
+.verTag{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--muted);border:1px solid var(--line);padding:1px 6px;border-radius:5px;vertical-align:middle;margin-left:6px}
 .brandSub{color:var(--muted);font-size:12px}
 .brandSub b{color:var(--ink)}
 .topActions{display:flex;gap:10px;align-items:center}
