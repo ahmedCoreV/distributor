@@ -13,28 +13,33 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin></script>
-<!-- Microsoft Authentication Library v2 (v3+ is no longer CDN-hosted). Only used when MS_CONFIG.enabled = true -->
-<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2/lib/msal-browser.min.js" crossorigin></script>
+<!-- MSAL v2 (same as the Sales Tracker). Primary jsDelivr, cdnjs fallback. -->
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js"></script>
+<script>if (typeof msal === "undefined") { document.write('<scr' + 'ipt src="https://cdnjs.cloudflare.com/ajax/libs/msal-browser/2.38.3/msal-browser.min.js"><\/scr' + 'ipt>'); }</script>
 </head>
 <body>
 <div id="root"><div id="boot">Loading distribution console…</div></div>
 
 <!-- ============================================================
-     CONFIG — edit after you register an app in Microsoft Entra.
-     Leave enabled:false to run locally (no login, browser storage).
+     Microsoft sign-in + OneDrive sync — same setup as the OxeFit
+     Sales Tracker. Reuses the existing Core Velocity Azure app, so
+     NO new app registration is needed — BUT the URL where you host
+     this file must be added as a SPA "Redirect URI" on that app
+     (Entra > App registrations > OXEFIT Tracker > Authentication).
      ============================================================ -->
 <script>
 window.MS_CONFIG = {
-  enabled: false,                                  // ← flip to true once the 3 fields below are set
-  clientId: "REPLACE_WITH_APPLICATION_CLIENT_ID",  // Entra app registration → Application (client) ID
-  tenantId: "common",                              // Directory (tenant) ID, or "common"
-  adminAllowlist: ["admin@yourcompany.com"],       // only these signed-in emails may open the tool
-  scopes: ["User.Read", "Files.ReadWrite"],        // Graph delegated scopes (sign-in + OneDrive)
-  oneDrivePath: "Apps/OxeFit/distribution.json"    // where the data file lives in the admin's OneDrive
+  enabled: true,
+  clientId: "cd1b7f5f-5ff9-4066-ab4f-06f270a94fcb",                 // OXEFIT Tracker — Azure app (reused)
+  authority: "https://login.microsoftonline.com/core-velocity.com", // core-velocity.com tenant
+  adminAllowlist: ["ahmed@core-velocity.com"],                      // ONLY Ahmed may open this tool
+  sharedDriveUser: "demo@core-velocity.com",                        // all data lives in this shared OneDrive
+  filePath: "/OXEFIT/distribution-builder.json",                   // separate file from the sales tracker
+  scopes: ["Files.ReadWrite.All", "User.Read"]
 };
 </script>
 
-<!-- Auth gate + storage wiring (Microsoft login + OneDrive sync, with local fallback) -->
+<!-- Auth gate + OneDrive storage (loginRedirect flow; local fallback if disabled) -->
 <script>
 (function () {
   var BRAND = { bg:"#0a0e16", navy:"#0c1c34", accent:"#4a8cf7", ink:"#eef3fb", muted:"#8aa0c0", red:"#f0481e", green:"#34bd9c", line:"rgba(140,170,210,.16)" };
@@ -53,30 +58,63 @@ window.MS_CONFIG = {
     };
   }
 
+  // OneDrive on the SHARED demo@ drive. Mirrors the Sales Tracker: resolve the
+  // file via /me/drive/sharedWithMe, else path-address /users/{upn}/drive root.
   function oneDriveAdapter(cfg, getToken){
-    var url = "https://graph.microsoft.com/v1.0/me/drive/root:/" + cfg.oneDrivePath;
+    var fileName = (cfg.filePath.split("/").pop() || "").toLowerCase();
+    var ref = null;  // { driveId, itemId } once resolved
     var CACHE = "__oxe_cloudcache", t=null, last=null;
+    function userPathUrl(){ return "https://graph.microsoft.com/v1.0/users/" + encodeURIComponent(cfg.sharedDriveUser) + "/drive/root:" + cfg.filePath + ":/content"; }
+    function itemUrl(r){ return "https://graph.microsoft.com/v1.0/drives/" + encodeURIComponent(r.driveId) + "/items/" + encodeURIComponent(r.itemId) + "/content"; }
+    function resolveRef(tok, force){
+      if (ref && !force) return Promise.resolve(ref);
+      return fetch("https://graph.microsoft.com/v1.0/me/drive/sharedWithMe", { headers:{ Authorization:"Bearer "+tok } })
+        .then(function(r){ return r.ok ? r.json() : { value:[] }; })
+        .then(function(b){
+          var items = (b && b.value) || [];
+          for (var i=0;i<items.length;i++){
+            var it = items[i], ri = it.remoteItem || it;
+            var nm = ((it.name || ri.name || "")).toLowerCase();
+            var dId = ri.parentReference && ri.parentReference.driveId, iId = ri.id;
+            if (dId && iId && nm === fileName){ ref = { driveId:dId, itemId:iId }; return ref; }
+          }
+          return null;
+        }).catch(function(){ return null; });
+    }
     function pull(){
-      return getToken().then(function(tok){ return fetch(url+":/content", { headers:{ Authorization:"Bearer "+tok } }); })
-        .then(function(r){ if(r.status===404) return null; if(!r.ok) throw new Error("graph "+r.status); return r.text(); })
-        .catch(function(){ return HAS_LS ? localStorage.getItem(CACHE) : null; });
+      return getToken().then(function(tok){
+        return resolveRef(tok).then(function(r){
+          var url = r ? itemUrl(r) : userPathUrl();
+          return fetch(url, { headers:{ Authorization:"Bearer "+tok } }).then(function(res){
+            if (res.status===404) return null;
+            if (!res.ok) throw new Error("graph "+res.status);
+            return res.text();
+          });
+        });
+      }).catch(function(){ return HAS_LS ? localStorage.getItem(CACHE) : null; });
     }
     function push(val){
-      return getToken().then(function(tok){ return fetch(url+":/content", { method:"PUT", headers:{ Authorization:"Bearer "+tok, "Content-Type":"application/json" }, body: val }); })
-        .catch(function(){ /* keep local cache; will retry on next change */ });
+      return getToken().then(function(tok){
+        return resolveRef(tok).then(function(r){
+          var url = r ? itemUrl(r) : userPathUrl();
+          return fetch(url, { method:"PUT", headers:{ Authorization:"Bearer "+tok, "Content-Type":"application/json" }, body: val })
+            .then(function(res){
+              if (res.status===404 && r){ ref=null; return fetch(userPathUrl(), { method:"PUT", headers:{ Authorization:"Bearer "+tok, "Content-Type":"application/json" }, body: val }); }
+              return res;
+            });
+        });
+      }).catch(function(){});
     }
     return {
-      get: function(k){ return pull().then(function(v){ if(v!=null && HAS_LS) localStorage.setItem(CACHE,v); return v==null?null:{key:k,value:v,shared:false}; }); },
-      set: function(k,v){ if(HAS_LS) localStorage.setItem(CACHE,v); last=v; clearTimeout(t); t=setTimeout(function(){ push(last); }, 2500); return Promise.resolve({key:k,value:v}); },
+      get: function(k){ return pull().then(function(v){ if (v!=null && HAS_LS) localStorage.setItem(CACHE,v); return v==null?null:{key:k,value:v,shared:false}; }); },
+      set: function(k,v){ if(HAS_LS) localStorage.setItem(CACHE,v); last=v; clearTimeout(t); t=setTimeout(function(){ push(last); }, 2000); return Promise.resolve({key:k,value:v}); },
       "delete": function(k){ if(HAS_LS) localStorage.removeItem(CACHE); return Promise.resolve({key:k,deleted:true}); },
       list: function(){ return Promise.resolve({keys:[]}); }
     };
   }
 
-  function screen(inner){
-    document.getElementById("root").innerHTML =
-      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:'+BRAND.bg+';font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:'+BRAND.ink+';padding:24px;">'+inner+'</div>';
-  }
+  function screen(inner){ document.getElementById("root").innerHTML =
+    '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:'+BRAND.bg+';font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:'+BRAND.ink+';padding:24px;">'+inner+'</div>'; }
   function card(inner){ return '<div style="background:'+BRAND.navy+';border:1px solid '+BRAND.line+';border-radius:16px;padding:34px 30px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5);">'+inner+'</div>'; }
   function mark(){ return '<div style="width:46px;height:46px;border-radius:11px;background:'+BRAND.accent+';color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:17px;">CV</div>'; }
   function msg(s){ var m=document.getElementById("oxeMsg"); if(m) m.textContent=s||""; }
@@ -91,7 +129,7 @@ window.MS_CONFIG = {
   function renderDenied(email){
     screen(card(mark()
       + '<div style="font-size:18px;font-weight:700;margin-bottom:6px;color:'+BRAND.red+';">Access denied</div>'
-      + '<div style="color:'+BRAND.muted+';font-size:13px;margin-bottom:20px;">'+ (email?('"'+email+'" is'):'This account is') +' not on the admin allowlist for this tool.</div>'
+      + '<div style="color:'+BRAND.muted+';font-size:13px;margin-bottom:20px;">'+ (email?('"'+email+'" is'):'This account is') +' not authorized for this tool. Admin access only.</div>'
       + '<button onclick="window.__oxeSignOut&&window.__oxeSignOut()" style="background:'+BRAND.bg+';color:'+BRAND.ink+';border:1px solid '+BRAND.line+';border-radius:9px;padding:10px 16px;font-size:13px;cursor:pointer;">Sign in as someone else</button>'));
   }
 
@@ -102,15 +140,17 @@ window.MS_CONFIG = {
       if (typeof msal === "undefined") { console.warn("MSAL unavailable — running locally."); window.storage = localStorageAdapter(); return resolve(true); }
 
       var pca = new msal.PublicClientApplication({
-        auth: { clientId: cfg.clientId, authority: "https://login.microsoftonline.com/" + (cfg.tenantId || "common"), redirectUri: location.href.split("#")[0].split("?")[0] },
+        auth: { clientId: cfg.clientId, authority: cfg.authority, redirectUri: location.origin + location.pathname },
         cache: { cacheLocation: "localStorage" }
       });
-      var scopes = cfg.scopes || ["User.Read", "Files.ReadWrite"];
+      var scopes = cfg.scopes || ["Files.ReadWrite.All", "User.Read"];
       function emailOf(a){ return (a && (a.username || "")).toLowerCase(); }
       function allowed(a){ var l=(cfg.adminAllowlist||[]).map(function(s){return s.toLowerCase();}); return l.length===0 || l.indexOf(emailOf(a))>=0; }
-      function getToken(){ return pca.acquireTokenSilent({ scopes: scopes, account: pca.getActiveAccount() }).then(function(r){ return r.accessToken; })
-        .catch(function(){ return pca.acquireTokenPopup({ scopes: scopes }).then(function(r){ return r.accessToken; }); }); }
-      window.__oxeSignOut = function(){ try { pca.logoutPopup().then(function(){ location.reload(); }).catch(function(){ location.reload(); }); } catch(e){ location.reload(); } };
+      function getToken(){
+        return pca.acquireTokenSilent({ scopes: scopes, account: pca.getActiveAccount() }).then(function(r){ return r.accessToken; })
+          .catch(function(){ pca.acquireTokenRedirect({ scopes: scopes }); return new Promise(function(){}); });  // navigates away
+      }
+      window.__oxeSignOut = function(){ try { pca.logoutRedirect(); } catch(e){ location.reload(); } };
 
       function proceed(account){
         if (!allowed(account)) { renderDenied(emailOf(account)); return resolve(false); }
@@ -121,12 +161,14 @@ window.MS_CONFIG = {
         return resolve(true);
       }
 
-      pca.handleRedirectPromise().then(function(){
+      // loginRedirect flow (popup breaks on GitHub Pages via COOP — Sales Tracker lesson)
+      pca.handleRedirectPromise().then(function(resp){
+        if (resp && resp.account) return proceed(resp.account);
         var accts = pca.getAllAccounts();
         if (accts && accts.length) return proceed(accts[0]);
-        renderSignIn(function(){ msg(""); pca.loginPopup({ scopes: scopes }).then(function(r){ proceed(r.account); }).catch(function(){ msg("Sign-in cancelled or failed."); }); });
+        renderSignIn(function(){ msg("Redirecting to Microsoft…"); pca.loginRedirect({ scopes: scopes, prompt: "select_account" }); });
       }).catch(function(){
-        renderSignIn(function(){ pca.loginPopup({ scopes: scopes }).then(function(r){ proceed(r.account); }).catch(function(){ msg("Sign-in failed."); }); });
+        renderSignIn(function(){ pca.loginRedirect({ scopes: scopes, prompt: "select_account" }); });
       });
     });
   };
