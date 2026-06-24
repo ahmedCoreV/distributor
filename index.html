@@ -5,33 +5,130 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>OxeFit Distribution Builder — Core Velocity</title>
 <style>
-  html, body { margin: 0; background: #0c0f14; }
+  html, body { margin: 0; background: #0a0e16; }
   #root { min-height: 100vh; }
-  #boot { color: #8693a6; font-family: ui-monospace, Menlo, Consolas, monospace; padding: 48px; text-align: center; }
+  #boot { color: #8aa0c0; font-family: ui-monospace, Menlo, Consolas, monospace; padding: 48px; text-align: center; }
 </style>
-<!-- React + Babel from CDN (first load needs an internet connection) -->
+<!-- React + Babel (first load needs internet) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin></script>
+<!-- Microsoft Authentication Library v2 (v3+ is no longer CDN-hosted). Only used when MS_CONFIG.enabled = true -->
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2/lib/msal-browser.min.js" crossorigin></script>
 </head>
 <body>
 <div id="root"><div id="boot">Loading distribution console…</div></div>
 
-<!-- storage adapter: prefer the Claude artifact store, else fall back to localStorage, else in-memory -->
+<!-- ============================================================
+     CONFIG — edit after you register an app in Microsoft Entra.
+     Leave enabled:false to run locally (no login, browser storage).
+     ============================================================ -->
+<script>
+window.MS_CONFIG = {
+  enabled: false,                                  // ← flip to true once the 3 fields below are set
+  clientId: "REPLACE_WITH_APPLICATION_CLIENT_ID",  // Entra app registration → Application (client) ID
+  tenantId: "common",                              // Directory (tenant) ID, or "common"
+  adminAllowlist: ["admin@yourcompany.com"],       // only these signed-in emails may open the tool
+  scopes: ["User.Read", "Files.ReadWrite"],        // Graph delegated scopes (sign-in + OneDrive)
+  oneDrivePath: "Apps/OxeFit/distribution.json"    // where the data file lives in the admin's OneDrive
+};
+</script>
+
+<!-- Auth gate + storage wiring (Microsoft login + OneDrive sync, with local fallback) -->
 <script>
 (function () {
-  if (window.storage && typeof window.storage.get === "function") return; // Claude runtime provides it
-  var mem = {};
-  var hasLS = (function () { try { var k="__t"; localStorage.setItem(k,"1"); localStorage.removeItem(k); return true; } catch (e) { return false; } })();
-  function rd(k){ return hasLS ? localStorage.getItem(k) : (k in mem ? mem[k] : null); }
-  function wr(k,v){ if (hasLS) localStorage.setItem(k,v); else mem[k]=v; }
-  function del(k){ if (hasLS) localStorage.removeItem(k); else delete mem[k]; }
-  function keys(){ if (hasLS){ var a=[]; for (var i=0;i<localStorage.length;i++) a.push(localStorage.key(i)); return a; } return Object.keys(mem); }
-  window.storage = {
-    get:   function (k){ var v = rd(k); return Promise.resolve(v == null ? null : { key: k, value: v, shared: false }); },
-    set:   function (k, v){ wr(k, v); return Promise.resolve({ key: k, value: v, shared: false }); },
-    delete:function (k){ del(k); return Promise.resolve({ key: k, deleted: true, shared: false }); },
-    list:  function (prefix){ var p = prefix || ""; return Promise.resolve({ keys: keys().filter(function (x){ return x.indexOf(p) === 0; }), prefix: p, shared: false }); }
+  var BRAND = { bg:"#0a0e16", navy:"#0c1c34", accent:"#4a8cf7", ink:"#eef3fb", muted:"#8aa0c0", red:"#f0481e", green:"#34bd9c", line:"rgba(140,170,210,.16)" };
+  var HAS_LS = (function(){ try{ localStorage.setItem("__t","1"); localStorage.removeItem("__t"); return true; }catch(e){ return false; } })();
+
+  function localStorageAdapter(){
+    var mem = {};
+    function rd(k){ return HAS_LS ? localStorage.getItem(k) : (k in mem ? mem[k] : null); }
+    function wr(k,v){ if(HAS_LS) localStorage.setItem(k,v); else mem[k]=v; }
+    function del(k){ if(HAS_LS) localStorage.removeItem(k); else delete mem[k]; }
+    return {
+      get: function(k){ var v=rd(k); return Promise.resolve(v==null?null:{key:k,value:v,shared:false}); },
+      set: function(k,v){ wr(k,v); return Promise.resolve({key:k,value:v,shared:false}); },
+      "delete": function(k){ del(k); return Promise.resolve({key:k,deleted:true}); },
+      list: function(p){ p=p||""; var a=[]; if(HAS_LS){ for(var i=0;i<localStorage.length;i++){ var key=localStorage.key(i); if(key.indexOf(p)===0) a.push(key); } } else { a=Object.keys(mem).filter(function(x){return x.indexOf(p)===0;}); } return Promise.resolve({keys:a,prefix:p}); }
+    };
+  }
+
+  function oneDriveAdapter(cfg, getToken){
+    var url = "https://graph.microsoft.com/v1.0/me/drive/root:/" + cfg.oneDrivePath;
+    var CACHE = "__oxe_cloudcache", t=null, last=null;
+    function pull(){
+      return getToken().then(function(tok){ return fetch(url+":/content", { headers:{ Authorization:"Bearer "+tok } }); })
+        .then(function(r){ if(r.status===404) return null; if(!r.ok) throw new Error("graph "+r.status); return r.text(); })
+        .catch(function(){ return HAS_LS ? localStorage.getItem(CACHE) : null; });
+    }
+    function push(val){
+      return getToken().then(function(tok){ return fetch(url+":/content", { method:"PUT", headers:{ Authorization:"Bearer "+tok, "Content-Type":"application/json" }, body: val }); })
+        .catch(function(){ /* keep local cache; will retry on next change */ });
+    }
+    return {
+      get: function(k){ return pull().then(function(v){ if(v!=null && HAS_LS) localStorage.setItem(CACHE,v); return v==null?null:{key:k,value:v,shared:false}; }); },
+      set: function(k,v){ if(HAS_LS) localStorage.setItem(CACHE,v); last=v; clearTimeout(t); t=setTimeout(function(){ push(last); }, 2500); return Promise.resolve({key:k,value:v}); },
+      "delete": function(k){ if(HAS_LS) localStorage.removeItem(CACHE); return Promise.resolve({key:k,deleted:true}); },
+      list: function(){ return Promise.resolve({keys:[]}); }
+    };
+  }
+
+  function screen(inner){
+    document.getElementById("root").innerHTML =
+      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:'+BRAND.bg+';font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:'+BRAND.ink+';padding:24px;">'+inner+'</div>';
+  }
+  function card(inner){ return '<div style="background:'+BRAND.navy+';border:1px solid '+BRAND.line+';border-radius:16px;padding:34px 30px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5);">'+inner+'</div>'; }
+  function mark(){ return '<div style="width:46px;height:46px;border-radius:11px;background:'+BRAND.accent+';color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:17px;">CV</div>'; }
+  function msg(s){ var m=document.getElementById("oxeMsg"); if(m) m.textContent=s||""; }
+  function renderSignIn(onClick){
+    screen(card(mark()
+      + '<div style="font-size:18px;font-weight:700;margin-bottom:6px;">OxeFit Distribution Builder</div>'
+      + '<div style="color:'+BRAND.muted+';font-size:13px;margin-bottom:22px;">Core Velocity · admin access only</div>'
+      + '<button id="oxeSignIn" style="width:100%;background:'+BRAND.accent+';color:#fff;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Sign in with Microsoft</button>'
+      + '<div id="oxeMsg" style="color:'+BRAND.red+';font-size:12px;margin-top:12px;min-height:16px;"></div>'));
+    document.getElementById("oxeSignIn").onclick = onClick;
+  }
+  function renderDenied(email){
+    screen(card(mark()
+      + '<div style="font-size:18px;font-weight:700;margin-bottom:6px;color:'+BRAND.red+';">Access denied</div>'
+      + '<div style="color:'+BRAND.muted+';font-size:13px;margin-bottom:20px;">'+ (email?('"'+email+'" is'):'This account is') +' not on the admin allowlist for this tool.</div>'
+      + '<button onclick="window.__oxeSignOut&&window.__oxeSignOut()" style="background:'+BRAND.bg+';color:'+BRAND.ink+';border:1px solid '+BRAND.line+';border-radius:9px;padding:10px 16px;font-size:13px;cursor:pointer;">Sign in as someone else</button>'));
+  }
+
+  window.__oxeBoot = function(){
+    return new Promise(function(resolve){
+      var cfg = window.MS_CONFIG || {};
+      if (!cfg.enabled) { if (!(window.storage && window.storage.get)) window.storage = localStorageAdapter(); return resolve(true); }
+      if (typeof msal === "undefined") { console.warn("MSAL unavailable — running locally."); window.storage = localStorageAdapter(); return resolve(true); }
+
+      var pca = new msal.PublicClientApplication({
+        auth: { clientId: cfg.clientId, authority: "https://login.microsoftonline.com/" + (cfg.tenantId || "common"), redirectUri: location.href.split("#")[0].split("?")[0] },
+        cache: { cacheLocation: "localStorage" }
+      });
+      var scopes = cfg.scopes || ["User.Read", "Files.ReadWrite"];
+      function emailOf(a){ return (a && (a.username || "")).toLowerCase(); }
+      function allowed(a){ var l=(cfg.adminAllowlist||[]).map(function(s){return s.toLowerCase();}); return l.length===0 || l.indexOf(emailOf(a))>=0; }
+      function getToken(){ return pca.acquireTokenSilent({ scopes: scopes, account: pca.getActiveAccount() }).then(function(r){ return r.accessToken; })
+        .catch(function(){ return pca.acquireTokenPopup({ scopes: scopes }).then(function(r){ return r.accessToken; }); }); }
+      window.__oxeSignOut = function(){ try { pca.logoutPopup().then(function(){ location.reload(); }).catch(function(){ location.reload(); }); } catch(e){ location.reload(); } };
+
+      function proceed(account){
+        if (!allowed(account)) { renderDenied(emailOf(account)); return resolve(false); }
+        pca.setActiveAccount(account);
+        window.__OXE_USER__ = account.username;
+        window.__OXE_ADMIN__ = true;
+        window.storage = oneDriveAdapter(cfg, getToken);
+        return resolve(true);
+      }
+
+      pca.handleRedirectPromise().then(function(){
+        var accts = pca.getAllAccounts();
+        if (accts && accts.length) return proceed(accts[0]);
+        renderSignIn(function(){ msg(""); pca.loginPopup({ scopes: scopes }).then(function(r){ proceed(r.account); }).catch(function(){ msg("Sign-in cancelled or failed."); }); });
+      }).catch(function(){
+        renderSignIn(function(){ pca.loginPopup({ scopes: scopes }).then(function(r){ proceed(r.account); }).catch(function(){ msg("Sign-in failed."); }); });
+      });
+    });
   };
 })();
 </script>
@@ -412,7 +509,7 @@ function App() {
   const [tab, setTab] = useState("dashboard");
   const [loaded, setLoaded] = useState(false);
   const [toast, setToast] = useState("");
-  const [admin, setAdmin] = useState(false);
+  const [admin, setAdmin] = useState(() => typeof window !== "undefined" && !!window.__OXE_ADMIN__);
   const saveTimer = useRef(null);
 
   // backfill new fields + migrate old statuses on any loaded/imported data
@@ -483,6 +580,13 @@ function App() {
           </div>
         </div>
         <div className="topActions">
+          {typeof window !== "undefined" && window.__OXE_USER__ && (
+            <div className="userChip" title={window.__OXE_USER__}>
+              <span className="userDot" />
+              <span className="userName">{window.__OXE_USER__}</span>
+              <button className="signOut" onClick={() => window.__oxeSignOut && window.__oxeSignOut()}>Sign out</button>
+            </div>
+          )}
           {overdueCount > 0 && (
             <button className="alertPill" onClick={() => setTab("outreach")}>
               <span className="dot" /> {overdueCount} follow-up{overdueCount > 1 ? "s" : ""} overdue
@@ -654,35 +758,63 @@ function StatusMini({ counts }) {
 /* ============================== PIPELINE ============================== */
 function Pipeline({ state, patch, flash, setState, admin }) {
   const [fRegion, setFRegion] = useState("all");
+  const [fCountry, setFCountry] = useState("all");
   const [fType, setFType] = useState("all");
   const [fStatus, setFStatus] = useState("all");
+  const [fBand, setFBand] = useState("all");
+  const [fConflict, setFConflict] = useState(false);
+  const [search, setSearch] = useState("");
   const [open, setOpen] = useState(null); // prospect id in drawer
   const [adding, setAdding] = useState(false);
 
+  const countryOptions = useMemo(() => {
+    const set = state.prospects
+      .filter((p) => fRegion === "all" || p.region === fRegion)
+      .map((p) => p.country).filter(Boolean);
+    return [...new Set(set)].sort();
+  }, [state.prospects, fRegion]);
+
+  const bandMin = { all: -1, prime: 80, strong: 60, possible: 40, weak: 0 };
+  const bandMax = { all: 101, prime: 101, strong: 80, possible: 60, weak: 40 };
+
   const ranked = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return state.prospects
       .map((p) => ({ ...p, _score: weightedScore(p, state.criteria), _fu: followUpState(p, state.cadence) }))
       .filter((p) => fRegion === "all" || p.region === fRegion)
+      .filter((p) => fCountry === "all" || p.country === fCountry)
       .filter((p) => fType === "all" || p.type === fType)
       .filter((p) => fStatus === "all" || p.status === fStatus)
+      .filter((p) => fBand === "all" || (p._score >= bandMin[fBand] && p._score < bandMax[fBand]))
+      .filter((p) => !fConflict || hasConflict(p))
+      .filter((p) => !q || [p.name, p.country, p.decisionMaker, p.competitors, p.contactName, p.notes].some((x) => (x || "").toLowerCase().includes(q)))
       .sort((a, b) => b._score - a._score);
-  }, [state, fRegion, fType, fStatus]);
+  }, [state, fRegion, fCountry, fType, fStatus, fBand, fConflict, search]);
 
   const top10 = ranked.slice(0, 10);
+  const clearAll = () => { setFRegion("all"); setFCountry("all"); setFType("all"); setFStatus("all"); setFBand("all"); setFConflict(false); setSearch(""); };
+  const activeFilters = (fRegion !== "all") + (fCountry !== "all") + (fType !== "all") + (fStatus !== "all") + (fBand !== "all") + (fConflict ? 1 : 0) + (search.trim() ? 1 : 0);
 
   return (
     <div>
       <div className="bar">
+        <input className="searchBox" placeholder="Search company, country, decision-maker, brand…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <button className="btn primary" onClick={() => setAdding(true)}>+ Add prospect</button>
+      </div>
+      <div className="bar">
         <div className="filters">
-          <Select value={fRegion} onChange={setFRegion} options={[["all", "All regions"], ...state.regions.map((r) => [r.name, r.name])]} />
+          <Select value={fRegion} onChange={(v) => { setFRegion(v); setFCountry("all"); }} options={[["all", "All regions"], ...state.regions.map((r) => [r.name, r.name])]} />
+          <Select value={fCountry} onChange={setFCountry} options={[["all", "All countries"], ...countryOptions.map((c) => [c, c])]} />
           <Select value={fType} onChange={setFType} options={[["all", "All types"], ["Distributor", "Distributor"], ["Dealer", "Dealer"], ["Reseller", "Reseller"]]} />
           <Select value={fStatus} onChange={setFStatus} options={[["all", "All status"], ...Object.entries(STATUS).map(([k, v]) => [k, v.label])]} />
+          <Select value={fBand} onChange={setFBand} options={[["all", "All fit"], ["prime", "Prime ≥80"], ["strong", "Strong 60–79"], ["possible", "Possible 40–59"], ["weak", "Weak <40"]]} />
+          <button className={`chipToggle ${fConflict ? "on" : ""}`} onClick={() => setFConflict((v) => !v)}>⚠ Conflicts only</button>
+          {activeFilters > 0 && <button className="btn ghost small" onClick={clearAll}>Clear ({activeFilters})</button>}
         </div>
-        <button className="btn primary" onClick={() => setAdding(true)}>+ Add prospect</button>
       </div>
 
       <div className="legend">
-        Ranked by weighted fit score · top 10 highlighted · {ranked.length} shown
+        Ranked by weighted fit score · top 10 highlighted · {ranked.length} of {state.prospects.length} shown
       </div>
 
       {ranked.length === 0 ? (
@@ -1490,7 +1622,16 @@ function Style() {
 
 /* bars / filters */
 .bar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
-.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.searchBox{flex:1;min-width:220px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 13px;color:var(--ink);font-size:13px;font-family:var(--sans)}
+.searchBox:focus{outline:none;border-color:var(--accent)}
+.chipToggle{background:var(--panel2);border:1px solid var(--line);color:var(--muted);padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.chipToggle.on{color:var(--red);border-color:var(--red);background:rgba(240,72,30,.1)}
+.userChip{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:5px 6px 5px 12px;font-size:12px}
+.userDot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex-shrink:0}
+.userName{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.signOut{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--sans)}
+.signOut:hover{color:var(--ink);border-color:var(--muted)}
 .select,.field select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:13px;font-family:var(--sans);cursor:pointer}
 .legend{color:var(--muted);font-size:12px;margin-bottom:10px;font-family:var(--mono)}
 
@@ -1716,7 +1857,9 @@ a.btn{text-decoration:none;display:inline-block}
 }
 
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+window.__oxeBoot().then(function (ok) {
+  if (ok) ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+});
 </script>
 </body>
 </html>
