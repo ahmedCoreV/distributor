@@ -547,6 +547,51 @@ const COMPETITORS = {
   "Calypso Fitness / FIT MY": "PENT (luxury)",
   "Oprema.Fit": "Gungnir + premium brands (verify)",
   "Orrlabda": "Gungnir + premium brands (verify)",
+  // --- fit-out & expanded partners ---
+  "USBC Interiors": "Equipment-agnostic fit-out — specs multiple brands per project",
+  "MGM Interiors": "Equipment-agnostic gym fit-out (open to OxeFit spec)",
+  "Mark Fitout": "Equipment-agnostic luxury gym fit-out",
+  "La Firma": "Equipment-agnostic fit-out + supervision",
+  "Lloyd Design Fitouts": "Salon/spa/gym fit-out — equipment-agnostic",
+  "Saudi FitOut": "Cross-industry fit-out contractor (hotels, healthcare) — equipment-agnostic",
+  "Lifetime Fitness Store": "Multi-brand home + commercial reseller (verify brands)",
+  "Urban Fitness Cart": "Multi-brand home + commercial reseller (verify brands)",
+  "Top Sky Land KSA": "Own/house cardio brands (verify)",
+  "1441 Fitness": "Multi-brand online + commercial (verify)",
+  "Afton Fitness": "Own manufacturing + international brand partnerships; connected cardio",
+  "Energie Fitness": "Turnkey gym builder — own + sourced brands (verify)",
+  "Fitness World India": "Turnkey gym solutions — own + sourced brands (verify)",
+  "Athlon India": "Importer of commercial fitness brands (verify)",
+  "AlphaFit": "Own AlphaFit equipment + turnkey fit-out (functional/S&C)",
+  "Gym Direct": "Harison, RMC (house brands) — turnkey fit-out",
+  "Prima Commercial Fitouts": "Equipment-agnostic fit-out — Gold's Gym Australia partner",
+  "Dynamo Fitness": "Reeplex (house brand) — national fit-out + senior/rehab",
+  "Compound Fitness": "Multi-brand commercial fit-out (verify)",
+  "RAW Fitness Equipment": "Own AU-designed commercial equipment (AU + NZ)",
+  "Concept Health": "Equipment-agnostic; builds for smart gym equipment, rehab/wellness focus",
+  // --- global expansion II: Gulf / Africa / CEE / SE Asia ---
+  "Sports Village Qatar": "Precor, Panatta, Concept2, Torque, Impulse, Intenza — Precor is LF-family",
+  "Green Sports Qatar": "Fitness + spa equipment, prestigious facilities (verify brands)",
+  "MEFITPRO": "Master distributor — premium multi-brand portfolio since 2003 (verify)",
+  "Active Fitness Store": "REP Fitness (GCC) + international multi-brand",
+  "Wellness First": "Gymleco + multi-brand (Kuwait & Oman)",
+  "Pro-Fit Egypt": "Legend Fitness (US strength) + multi-brand",
+  "Raya Fitness": "Gymleco + multi-brand (Jordan)",
+  "Nairobi Fitness Hub": "Life Fitness, Technogym, Matrix, Precor, Hammer, StairMaster — CONFLICT: carries Tier-1 incumbents",
+  "Fitness Network Africa": "Multi-brand strength/cardio across Southern Africa (verify)",
+  "Progressive Distributors Ltd": "Star Trac, StairMaster, Schwinn (Core Health & Fitness)",
+  "inSPORTline": "Own/house range + multi-brand (home + commercial)",
+  "GRÜN SPORT": "Own Czech-made strength range + turnkey fit-out",
+  "Mens Mentis Group": "Gymleco + multi-brand (Romania/Hungary)",
+  "CARDIO & FITNESS STUDIO": "Gymleco + multi-brand (Czechia/Slovakia)",
+  "Vortex Fitness Malaysia": "Intenza, Yanre — cardio/strength (not connected)",
+  "Elite Sports & Fitness": "Gymleco + multi-brand (Malaysia)",
+  "PT Advance Technology Supplier": "Gymleco + multi-brand (Indonesia)",
+  "City Sports (Thailand)": "Spirit Fitness + multi-brand (Thailand)",
+  "AKI Fitness (Befit)": "Multi-brand Gulf distributor — Qatar/Kuwait/UAE (verify portfolio)",
+  "Sports Solutions LLC": "Precor (LF-family) + Queenax — sole Oman distributor; rehab/hospitality",
+  "Athletics Trading SPC": "Al Reza Group — multi-brand (verify portfolio)",
+  "Agatex": "Star Trac, Nautilus (Core Health & Fitness family) — hotels/resorts",
 };
 // brands that count as a DIRECT premium-connected competitor when present
 const COMPETITOR_KEYWORDS = ["Technogym", "Life Fitness", "LF-family", "Speediance", "Tonal", "Peloton", "Vitruvian", "Cybex", "Precor", "Hammer", "Keiser", "Matrix"];
@@ -568,6 +613,197 @@ function setToProspects(set, criteria) {
 }
 const starterProspects = (criteria) => setToProspects(STARTER_SET, criteria);
 const globalProspects = (criteria) => setToProspects(GLOBAL_SET, criteria);
+
+/* ---- Fit-out specialists + expanded distributors / dealers / resellers / partners ----
+   Fit-out firms build & equip gyms/hospitality/clinical spaces and specify the kit, so
+   they're strong route-to-market partners even when equipment-agnostic. Many contacts
+   are marked "verify" — research-sourced, not confirmed. */
+const PARTNERS_SET = [
+  // ---- Middle East · UAE (fit-out) ----
+  { name: "USBC Interiors", type: "Fit-out", region: "Middle East", country: "UAE", website: "https://www.usbcinteriors.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "ISO-certified turnkey gym fit-out, Dubai. Builds commercial gyms, boutique studios, corporate gyms and hotel/resort gyms — strong hospitality channel. Equipment placement support; specs supplier kit. Verify contact.",
+    scores: [4, 4, 5, 4, 2, 3, 3, 2] },
+  { name: "MGM Interiors", type: "Fit-out", region: "Middle East", country: "UAE", website: "https://mgminteriorsuae.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "End-to-end gym fit-out across Dubai (health & wellness, F&B, hospitality). Handles DM/Civil Defence/DDA approvals. Good install partner for boutique + full-scale gyms. Verify contact.",
+    scores: [3, 4, 5, 4, 2, 3, 3, 2] },
+  { name: "Mark Fitout", type: "Fit-out", region: "Middle East", country: "UAE", website: "https://markfitout.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "14+ yrs gym interior design/fit-out, Dubai. Boutique to commercial, luxury wellness clubs; works with equipment suppliers on placement. Verify contact.",
+    scores: [4, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "La Firma", type: "Fit-out", region: "Middle East", country: "UAE", website: "https://lafirma.ae",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Full-service gym fit-out + on-site supervision across the Emirates (Dubai, Sharjah, Ajman). Turnkey; UAE code compliance. Verify contact.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "Lloyd Design Fitouts", type: "Fit-out", region: "Middle East", country: "UAE", website: "https://lloyddesignuae.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "info@ldfitouts.com",
+    notes: "Luxury salon/spa/gym fit-out, Dubai (Gold & Diamond Park). Wellness-led — fits OxeFit's premium hospitality/biohack angle. Email on file (verify).",
+    scores: [4, 3, 4, 4, 2, 3, 3, 2] },
+  // ---- Middle East · KSA (reseller + fit-out) ----
+  { name: "Saudi FitOut", type: "Fit-out", region: "Middle East", country: "KSA", website: "https://saudifitout.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Cross-industry fit-out contractor, Riyadh + Jeddah (since 2018; origins Amman 2003, factories Amman + Dubai). Hotels, offices, healthcare, education — strong for OxeFit medical/hospitality. Verify contact.",
+    scores: [4, 4, 5, 4, 2, 4, 3, 2] },
+  { name: "Lifetime Fitness Store", type: "Reseller", region: "Middle East", country: "KSA", website: "https://lifetimefitnessstore.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Design–supply–install + after-sales across KSA (Riyadh, Jeddah, Khobar). Home + commercial; serves chains and studios. Verify contact.",
+    scores: [3, 4, 4, 4, 2, 3, 3, 2] },
+  { name: "Urban Fitness Cart", type: "Reseller", region: "Middle East", country: "KSA", website: "https://urbanfitnesscart.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "KSA specialist supplier — serves homes, gyms, studios, hotels and corporate fitness. Verify contact + brand portfolio.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "1441 Fitness", type: "Reseller", region: "Middle East", country: "KSA", website: "https://1441fitnessksa.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "KSA online + commercial gym equipment store (cardio, strength, functional). Fast-growing e-commerce reach. Verify contact.",
+    scores: [2, 3, 3, 4, 2, 3, 2, 2] },
+  // ---- APAC · India (partners) ----
+  { name: "Afton Fitness", type: "Partner", region: "APAC", country: "India", website: "https://aftonfitness.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Indian manufacturing + international brand partnerships; connected cardio (touchscreens, app). Popular with high-end gyms, corporate fitness, wellness — open channel for connected systems. Verify contact.",
+    scores: [4, 4, 4, 4, 3, 3, 4, 2] },
+  { name: "Energie Fitness", type: "Partner", region: "APAC", country: "India", website: "https://energiefitness.in",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Turnkey 'ready-to-run' gym builder with branding + install + after-sales. National reach; could bundle OxeFit into new builds. Verify contact + URL.",
+    scores: [3, 4, 4, 4, 2, 3, 4, 2] },
+  { name: "Fitness World India", type: "Partner", region: "APAC", country: "India", website: "",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Complete gym solutions — manufacturing, install, facility design; turnkey for hotels/institutions. Single-vendor builds. Verify URL + contact.",
+    scores: [3, 4, 4, 4, 2, 3, 3, 2] },
+  { name: "Athlon India", type: "Distributor", region: "APAC", country: "India", website: "https://athlonindia.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Importer/distributor of commercial fitness equipment in India — right profile to carry imported connected systems. Verify contact + portfolio.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  // ---- Australia (fit-out + supply) ----
+  { name: "AlphaFit", type: "Fit-out", region: "Australia", country: "Australia", website: "https://www.alphafit.com.au",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Turnkey gym fit-out (Blindside Group) — design, flooring, install + financing. Commercial, education, sports clubs, S&C, CrossFit. National. Verify contact.",
+    scores: [4, 4, 5, 4, 2, 4, 4, 3] },
+  { name: "Gym Direct", type: "Fit-out", region: "Australia", country: "Australia", website: "https://gymdirect.com.au",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "17+ yrs commercial fit-outs — schools, studios, strata, hospitals, military, government. Turnkey 2D/3D design, supply, install, training. National (Syd/Bne/Mel/Per). Verify contact.",
+    scores: [4, 4, 5, 4, 2, 4, 4, 3] },
+  { name: "Prima Commercial Fitouts", type: "Fit-out", region: "Australia", country: "Australia", website: "https://primacommercialfitouts.com.au",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "35-yr commercial fit-out firm; fit-out partner of choice for Gold's Gym Australia. Health & fitness, hospitality, education. Specifies equipment per build. Verify contact.",
+    scores: [4, 4, 5, 3, 2, 4, 4, 2] },
+  { name: "Dynamo Fitness", type: "Fit-out", region: "Australia", country: "Australia", website: "https://dynamocommercial.com.au",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Hundreds of commercial fit-outs nationwide; showrooms Mel/Syd/Bne/Per/Adl. Strong in senior-living + rehab spaces — direct fit for OxeFit's clinical angle. Carries Reeplex. Verify contact.",
+    scores: [4, 4, 5, 4, 2, 4, 4, 3] },
+  { name: "Compound Fitness", type: "Fit-out", region: "Australia", country: "Australia", website: "https://compoundfitness.com.au",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Sydney commercial gym fit-outs + equipment; runs a partnership program for multi-site operators. Verify contact + brands.",
+    scores: [3, 4, 4, 3, 2, 3, 3, 2] },
+  { name: "RAW Fitness Equipment", type: "Reseller", region: "Australia", country: "Australia", website: "https://rawfitnessequipment.com.au",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Premium commercial-grade supplier across AU + NZ; single pieces to full fit-outs, own AU-engineered range. Verify contact.",
+    scores: [4, 4, 4, 4, 2, 3, 4, 2] },
+  { name: "Concept Health", type: "Fit-out", region: "Australia", country: "Australia", website: "https://concepthealthspaces.com.au",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Gym + wellness/rehab fit-outs (Mel/Syd/Bne); explicitly plans power/AV/digital for SMART gym equipment and physio/rehab clinics — best-fit fit-out partner for OxeFit XP1. Verify contact.",
+    scores: [5, 4, 4, 4, 3, 3, 4, 4] },
+];
+const partnerProspects = (criteria) => setToProspects(PARTNERS_SET, criteria);
+
+/* ---- Global expansion II — Gulf · Africa · CEE · SE Asia ----
+   Several carry real contact emails surfaced from brand distributor directories.
+   Decision-maker names still need confirming where blank. */
+const EXPAND2_SET = [
+  // ---- Gulf ----
+  { name: "Sports Village Qatar", type: "Distributor", region: "Middle East", country: "Qatar", website: "https://www.sportsvillageqatar.com",
+    decisionMaker: "Ajesh Kumar (Manager) · Ahmed Kenaan (Sales Mgr) — verify", linkedIn: "", contactEmail: "info@sportsvillageqatar.com",
+    notes: "Doha pioneer (since 2006). Authorized Precor + Panatta + Concept2 + Bodytone + Intenza distributor; free 3D design, install & after-sales. Serves gyms, hotels, hospitals, military, corporate. Salwa Road, Doha. Tel +974 44501166. Email on file (verify).",
+    scores: [4, 5, 5, 4, 2, 4, 4, 3] },
+  { name: "Green Sports Qatar", type: "Distributor", region: "Middle East", country: "Qatar", website: "https://greensports.com.qa",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Doha fitness + spa supplier (est. 2016). Supply/install/maintenance for commercial & home gyms, health clubs, hotels, sports clubs, military. Al Sadd St, Doha. Verify contact.",
+    scores: [3, 4, 4, 4, 2, 3, 3, 2] },
+  { name: "MEFITPRO", type: "Distributor", region: "Middle East", country: "UAE", website: "https://www.mefitpro.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Master distributor across the Middle East since 2003 — supplies the biggest gyms, hotels and schools in the region. GCC-wide reach; pro install. One of the strongest regional partners. Verify contact.",
+    scores: [4, 4, 5, 5, 3, 4, 4, 2] },
+  { name: "Active Fitness Store", type: "Reseller", region: "Middle East", country: "UAE", website: "https://activefitnessstore.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "GCC-wide fitness store (UAE, KSA, Qatar, Kuwait, Oman, Bahrain). Authorized REP Fitness distributor across the Gulf + international brands. Strong e-commerce + retail reach. Verify contact.",
+    scores: [3, 3, 4, 5, 2, 3, 4, 2] },
+  { name: "Wellness First", type: "Distributor", region: "Middle East", country: "Kuwait", website: "https://wellnessfirst.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "info@wellnessfirst.com",
+    notes: "Covers Kuwait AND Oman. Gymleco distributor + multi-brand. Email on file (verify). Good single partner for two Gulf markets.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "Pro-Fit Egypt", type: "Distributor", region: "Africa", country: "Egypt", website: "",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Egypt distributor (listed reseller for Legend Fitness US strength). Entry point to the North-Africa / Egypt market. Verify URL + contact.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "Raya Fitness", type: "Distributor", region: "Middle East", country: "Jordan", website: "https://rayafitness.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "khalid@rayafitness.com",
+    notes: "Jordan distributor (Gymleco + multi-brand). Named contact Khalid on file (verify). Local to Core Velocity's home market.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "AKI Fitness (Befit)", type: "Distributor", region: "Middle East", country: "Qatar", website: "https://www.akifitness.com",
+    decisionMaker: "Helmi T. (Qatar) — verify", linkedIn: "", contactEmail: "helmi.t@akigroup.com",
+    notes: "Multi-Gulf distributor (AKI Group) with offices in Qatar, Kuwait and UAE — one partner for three markets. Doha: helmi.t@akigroup.com / +974 44954958. Kuwait: fitness.kw@akigroup.com / +965 22322976. Verify brands.",
+    scores: [4, 4, 4, 5, 2, 3, 4, 2] },
+  { name: "Sports Solutions LLC", type: "Distributor", region: "Middle East", country: "Oman", website: "http://www.sportssolutionsllc.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Sole authorised Oman distributor for Precor + Queenax. 100% Omani; 500+ installs incl. 25+ hospitality projects. Serves hotels/resorts, health clubs, corporate, military, education and PHYSIOTHERAPY/REHAB centres — strong fit for OxeFit's clinical angle. CONFLICT note: carries Precor (LF-family). Verify contact.",
+    scores: [4, 4, 5, 4, 2, 3, 4, 3] },
+  { name: "Athletics Trading SPC", type: "Distributor", region: "Middle East", country: "Bahrain", website: "https://athleticsbh.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "info@alireza-group.com",
+    notes: "Bahrain distributor (Al Reza Group), Manama. Supply + retail; email on file (verify): info@alireza-group.com / +973 17727198. Fills the Bahrain gap. Verify brand portfolio.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "Agatex", type: "Distributor", region: "Africa", country: "Egypt", website: "https://www.agatex.me",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Egypt distributor of Star Trac + Nautilus (Core Health & Fitness). Long track record with hotels/resorts (Oberoi, Katameya Heights) and clubs (Alexandria Sporting Club) — strong hospitality references + after-sales. Verify contact.",
+    scores: [3, 4, 4, 4, 2, 3, 4, 2] },
+  // ---- Africa ----
+  { name: "Nairobi Fitness Hub", type: "Distributor", region: "Africa", country: "Kenya", website: "https://nairobifitnesshub.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Kenya's leading importer (since 2017); 2,000+ facilities incl. hotels, embassies (UN Gigiri), corporates, gov. CONFLICT: carries Technogym + Life Fitness + Matrix + Precor. Strong East-Africa reach but incumbent-aligned. Moi Ave, Nairobi.",
+    scores: [4, 4, 4, 4, 2, 3, 4, 2] },
+  { name: "Fitness Network Africa", type: "Distributor", region: "Africa", country: "Kenya", website: "https://www.fitnessnetwork.africa",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Large multi-country supplier — Kenya + Namibia, Botswana, Zimbabwe, Mozambique, Zambia, Tanzania, Angola, Mauritius, Seychelles. Broad sub-Saharan reach for a regional rollout. Verify contact.",
+    scores: [3, 3, 4, 5, 2, 3, 3, 2] },
+  { name: "Progressive Distributors Ltd", type: "Distributor", region: "Africa", country: "Kenya", website: "https://progressivefitness.co",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Nairobi distributor (Star Trac, StairMaster, Schwinn — Core Health & Fitness brands). Westlands, Nairobi. Verify contact.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  // ---- CEE ----
+  { name: "inSPORTline", type: "Distributor", region: "CEE", country: "Czechia", website: "https://www.insportline.eu",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "The biggest Czech fitness-equipment supplier — home, amateur and commercial; pan-European reach, 10-yr warranties, own servicing. Verify decision-maker.",
+    scores: [3, 4, 3, 4, 2, 4, 3, 2] },
+  { name: "GRÜN SPORT", type: "Fit-out", region: "CEE", country: "Czechia", website: "",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Czech strength manufacturer (279+ models) WITH complete turnkey fit-out service (consultation → design → install → training) across Central Europe. 10-yr frame warranty. Verify URL + contact.",
+    scores: [4, 4, 4, 4, 2, 4, 4, 2] },
+  { name: "Mens Mentis Group", type: "Distributor", region: "CEE", country: "Romania", website: "https://fitness-shop.ro",
+    decisionMaker: "Romeo (sales lead)", linkedIn: "", contactEmail: "romeo@mensmentisgroup.com",
+    notes: "Romania + Hungary distributor (Gymleco + multi-brand). Named contact + email on file (verify): romeo@mensmentisgroup.com / sales@mensmentisgroup.com, +40 359 444 443.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "CARDIO & FITNESS STUDIO", type: "Dealer", region: "CEE", country: "Czechia", website: "https://cardiofitness.sk",
+    decisionMaker: "", linkedIn: "", contactEmail: "predaj@cardiofitness.sk",
+    notes: "Czechia + Slovakia dealer (Gymleco + multi-brand). Email on file (verify): predaj@cardiofitness.sk, +421 948 707220.",
+    scores: [2, 3, 3, 4, 2, 3, 2, 2] },
+  // ---- SE Asia ----
+  { name: "Vortex Fitness Malaysia", type: "Distributor", region: "APAC", country: "Malaysia", website: "https://vortexmy.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Authorized Intenza + Yanre distributor; turnkey gym solutions for hotels, apartments, commercial gyms, sports complexes (also Sri Lanka). +60 14-613 7162. Verify contact name.",
+    scores: [3, 4, 4, 4, 2, 3, 3, 2] },
+  { name: "Elite Sports & Fitness", type: "Distributor", region: "APAC", country: "Malaysia", website: "",
+    decisionMaker: "Darren / Marcus (HSP Group)", linkedIn: "", contactEmail: "darren@hspgroup.com.my",
+    notes: "Malaysia distributor (Gymleco + multi-brand), HSP Group. Named contacts + emails on file (verify): darren@hspgroup.com.my / marcus@hspgroup.com.my, +60 16-311 1233.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "PT Advance Technology Supplier", type: "Distributor", region: "APAC", country: "Indonesia", website: "https://alatfitnespremium.com",
+    decisionMaker: "", linkedIn: "", contactEmail: "advance.technology.supplier@gmail.com",
+    notes: "Indonesia premium fitness distributor (Gymleco + multi-brand). Email on file (verify): +6221 6453817. Entry point to the Jakarta / Indonesia market.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+  { name: "City Sports (Thailand)", type: "Distributor", region: "APAC", country: "Thailand", website: "",
+    decisionMaker: "", linkedIn: "", contactEmail: "",
+    notes: "Thailand distributor (listed international distributor for Spirit Fitness). Bangkok-market entry point. Verify URL + contact.",
+    scores: [3, 3, 4, 4, 2, 3, 3, 2] },
+];
+const expand2Prospects = (criteria) => setToProspects(EXPAND2_SET, criteria);
 
 /* append, skipping duplicates by name+country (case-insensitive) */
 function mergeProspects(existing, incoming) {
@@ -883,7 +1119,7 @@ function Pipeline({ state, patch, flash, setState, admin }) {
         <div className="filters">
           <Select value={fRegion} onChange={(v) => { setFRegion(v); setFCountry("all"); }} options={[["all", "All regions"], ...state.regions.map((r) => [r.name, r.name])]} />
           <Select value={fCountry} onChange={setFCountry} options={[["all", "All countries"], ...countryOptions.map((c) => [c, c])]} />
-          <Select value={fType} onChange={setFType} options={[["all", "All types"], ["Distributor", "Distributor"], ["Dealer", "Dealer"], ["Reseller", "Reseller"]]} />
+          <Select value={fType} onChange={setFType} options={[["all", "All types"], ["Distributor", "Distributor"], ["Dealer", "Dealer"], ["Reseller", "Reseller"], ["Fit-out", "Fit-out"], ["Partner", "Partner"]]} />
           <Select value={fStatus} onChange={setFStatus} options={[["all", "All status"], ...Object.entries(STATUS).map(([k, v]) => [k, v.label])]} />
           <Select value={fBand} onChange={setFBand} options={[["all", "All fit"], ["prime", "Prime ≥80"], ["strong", "Strong 60–79"], ["possible", "Possible 40–59"], ["weak", "Weak <40"]]} />
           <button className={`chipToggle ${fConflict ? "on" : ""}`} onClick={() => setFConflict((v) => !v)}>⚠ Conflicts only</button>
@@ -1105,7 +1341,7 @@ function Drawer({ prospect, state, patch, flash, onClose, onDelete, admin }) {
             </div>
             <div className="fieldRow2">
               <Field label="Website" value={prospect.website} onChange={(v) => setField("website", v)} />
-              <SelectField label="Type" value={prospect.type} onChange={(v) => setField("type", v)} options={["Distributor", "Dealer", "Reseller"]} />
+              <SelectField label="Type" value={prospect.type} onChange={(v) => setField("type", v)} options={["Distributor", "Dealer", "Reseller", "Fit-out", "Partner"]} />
             </div>
             <FieldArea label="Notes" value={prospect.notes} onChange={(v) => setField("notes", v)} />
 
@@ -1215,7 +1451,7 @@ function AddProspect({ state, onClose, onAdd }) {
         <div className="drawerBody">
           <Field label="Company name" value={f.name} onChange={(v) => set("name", v)} autoFocus />
           <div className="fieldRow2">
-            <SelectField label="Type" value={f.type} onChange={(v) => set("type", v)} options={["Distributor", "Dealer", "Reseller"]} />
+            <SelectField label="Type" value={f.type} onChange={(v) => set("type", v)} options={["Distributor", "Dealer", "Reseller", "Fit-out", "Partner"]} />
             <SelectField label="Region" value={f.region} onChange={(v) => { set("region", v); const cs = state.regions.find((r) => r.name === v)?.countries || []; set("country", cs[0] || ""); }} options={state.regions.map((r) => r.name)} />
           </div>
           <div className="fieldRow2">
@@ -1576,6 +1812,22 @@ function ExportMenu({ state, flash, setState }) {
     });
     setOpen(false);
   };
+  const loadPartners = () => {
+    setState((s) => {
+      const { merged, addedCount, skipped } = mergeProspects(s.prospects, partnerProspects(s.criteria));
+      flash(addedCount ? `Loaded ${addedCount} prospect${addedCount > 1 ? "s" : ""}${skipped ? ` · ${skipped} already present` : ""}` : "Fit-out & partner set already loaded");
+      return { ...s, prospects: merged };
+    });
+    setOpen(false);
+  };
+  const loadExpand2 = () => {
+    setState((s) => {
+      const { merged, addedCount, skipped } = mergeProspects(s.prospects, expand2Prospects(s.criteria));
+      flash(addedCount ? `Loaded ${addedCount} prospect${addedCount > 1 ? "s" : ""}${skipped ? ` · ${skipped} already present` : ""}` : "Expansion II already loaded");
+      return { ...s, prospects: merged };
+    });
+    setOpen(false);
+  };
   const doImport = (text) => {
     let incoming = [];
     const trimmed = text.trim();
@@ -1618,6 +1870,8 @@ function ExportMenu({ state, flash, setState }) {
         <div className="menu" onMouseLeave={() => setOpen(false)}>
           <button onClick={loadStarter}>★ Load Middle East set (UAE + KSA)</button>
           <button onClick={loadGlobal}>★ Load expansion set (APAC · AU · Africa · CEE)</button>
+          <button onClick={loadPartners}>★ Load fit-out &amp; partner set (UAE · KSA · India · AU)</button>
+          <button onClick={loadExpand2}>★ Load expansion II (Gulf · Africa · CEE · SE Asia)</button>
           <button onClick={() => { setImporting(true); setOpen(false); }}>Import CSV / JSON…</button>
           <div className="menuSep" />
           <button onClick={csv}>Download CSV</button>
