@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -62,6 +63,18 @@ window.MS_CONFIG = {
 
   // OneDrive on the SHARED demo@ drive. Mirrors the Sales Tracker: resolve the
   // file via /me/drive/sharedWithMe, else path-address /users/{upn}/drive root.
+  function syncBanner(status){
+    var id = "oxeSyncBanner", el = document.getElementById(id);
+    if (status === "ok") { if (el) el.remove(); return; }
+    if (!el) {
+      el = document.createElement("div");
+      el.id = id;
+      el.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:99999;background:#3a0f06;color:#f4895a;border:1px solid #f0481e;border-radius:8px;padding:8px 14px;font:600 12px -apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.4)";
+      el.textContent = "⚠ Cloud sync failed — your changes are saved locally and will retry.";
+      document.body.appendChild(el);
+    }
+  }
+
   function oneDriveAdapter(cfg, getToken){
     var fileName = (cfg.filePath.split("/").pop() || "").toLowerCase();
     var ref = null;  // { driveId, itemId } once resolved
@@ -83,17 +96,18 @@ window.MS_CONFIG = {
           return null;
         }).catch(function(){ return null; });
     }
+    function parseTs(s){ try { return Date.parse(JSON.parse(s).updatedAt) || 0; } catch(e){ return 0; } }
     function pull(){
       return getToken().then(function(tok){
         return resolveRef(tok).then(function(r){
           var url = r ? itemUrl(r) : userPathUrl();
           return fetch(url, { headers:{ Authorization:"Bearer "+tok } }).then(function(res){
-            if (res.status===404) return null;
+            if (res.status===404) return { state:"empty", text:null };
             if (!res.ok) throw new Error("graph "+res.status);
-            return res.text();
+            return res.text().then(function(t){ return { state:"ok", text:t }; });
           });
         });
-      }).catch(function(){ return HAS_LS ? localStorage.getItem(CACHE) : null; });
+      }).catch(function(){ return { state:"error", text:null }; });
     }
     function push(val){
       return getToken().then(function(tok){
@@ -105,10 +119,25 @@ window.MS_CONFIG = {
               return res;
             });
         });
-      }).catch(function(){});
+      }).then(function(res){ syncBanner(res && res.ok ? "ok" : "error"); return res; })
+        .catch(function(){ syncBanner("error"); });
     }
     return {
-      get: function(k){ return pull().then(function(v){ if (v!=null && HAS_LS) localStorage.setItem(CACHE,v); return v==null?null:{key:k,value:v,shared:false}; }); },
+      // load: keep whichever copy is NEWER (local cache vs cloud) so an
+      // add that hasn't synced yet is never overwritten by the older cloud file
+      get: function(k){
+        var cached = HAS_LS ? localStorage.getItem(CACHE) : null;
+        return pull().then(function(res){
+          var chosen;
+          if (res.state === "ok") {
+            chosen = (cached != null && parseTs(cached) > parseTs(res.text)) ? cached : res.text;
+          } else {
+            chosen = cached;  // cloud empty or unreachable -> trust the local copy
+          }
+          if (chosen != null && HAS_LS) localStorage.setItem(CACHE, chosen);
+          return chosen == null ? null : { key:k, value:chosen, shared:false };
+        });
+      },
       set: function(k,v){ if(HAS_LS) localStorage.setItem(CACHE,v); last=v; clearTimeout(t); t=setTimeout(function(){ push(last); }, 2000); return Promise.resolve({key:k,value:v}); },
       "delete": function(k){ if(HAS_LS) localStorage.removeItem(CACHE); return Promise.resolve({key:k,deleted:true}); },
       list: function(){ return Promise.resolve({keys:[]}); }
