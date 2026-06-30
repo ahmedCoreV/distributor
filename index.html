@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -38,7 +37,7 @@ window.MS_CONFIG = {
   adminAllowlist: ["ahmed@core-velocity.com"],                      // ONLY Ahmed may open this tool
   sharedDriveUser: "demo@core-velocity.com",                        // all data lives in this shared OneDrive
   filePath: "/OXEFIT/distribution-builder.json",                   // separate file from the sales tracker
-  scopes: ["Files.ReadWrite.All", "User.Read", "Mail.Send"]
+  scopes: ["Files.ReadWrite.All", "User.Read", "Mail.Send", "Mail.ReadWrite"]
 };
 </script>
 
@@ -201,6 +200,33 @@ window.MS_CONFIG = {
             }).then(function(res){ return res.ok; });
           });
         };
+        // schedule an email to YOURSELF delivered on the follow-up date (deferred send).
+        // creates a draft, stamps PidTagDeferredSendTime (0x3FEF), then submits it — Exchange
+        // holds it and delivers at `whenISO`, so the reminder arrives even if this tool is closed.
+        window.__oxeScheduleReminder = function(whenISO, subject, bodyText){
+          return getToken().then(function(tok){
+            var me = (account && account.username) || (pca.getActiveAccount() && pca.getActiveAccount().username) || "";
+            if (!me) return false;
+            var draft = {
+              subject: subject,
+              body: { contentType: "Text", content: bodyText },
+              toRecipients: [{ emailAddress: { address: me } }],
+              singleValueExtendedProperties: [{ id: "SystemTime 0x3FEF", value: whenISO }]
+            };
+            return fetch("https://graph.microsoft.com/v1.0/me/messages", {
+              method: "POST",
+              headers: { Authorization: "Bearer " + tok, "Content-Type": "application/json" },
+              body: JSON.stringify(draft)
+            }).then(function(res){
+              if (!res.ok) return false;
+              return res.json().then(function(m){
+                return fetch("https://graph.microsoft.com/v1.0/me/messages/" + m.id + "/send", {
+                  method: "POST", headers: { Authorization: "Bearer " + tok }
+                }).then(function(r2){ return r2.ok; });
+              });
+            });
+          }).catch(function(){ return false; });
+        };
         return resolve(true);
       }
 
@@ -323,7 +349,7 @@ function defaultState() {
         contactName: "First Last", contactEmail: "name@example.com",
         notes: "Placeholder so you can see scoring + the email draft. Delete once real prospects are added.",
         scores: { ...c(4) }, status: "new", lastContacted: null, contactCount: 0, emailApproval: "none",
-        emailSubject: "", emailBody: "",
+        emailSubject: "", emailBody: "", followUpDate: "",
       },
     ],
     updatedAt: new Date().toISOString(),
@@ -346,6 +372,7 @@ function scoreBand(s) {
 
 /* ---- follow-up logic ---- */
 function nextFollowUp(prospect, cadence) {
+  if (prospect.followUpDate) return prospect.followUpDate;   // explicit follow-up date always wins
   if (!ACTIVE_OUTREACH.includes(prospect.status) || !prospect.lastContacted) return null;
   const idx = Math.min(prospect.contactCount, cadence.length - 1);
   const stepDays = cadence[Math.max(0, idx)] ?? cadence[cadence.length - 1];
@@ -636,7 +663,7 @@ function setToProspects(set, criteria) {
       website: s.website, decisionMaker: s.decisionMaker || "", linkedIn: s.linkedIn || "",
       competitors: COMPETITORS[s.name] || "",
       contactName: "", contactEmail: s.contactEmail || "", notes: s.notes,
-      emailSubject: "", emailBody: "",
+      emailSubject: "", emailBody: "", followUpDate: "",
       scores, status: "new", lastContacted: null, contactCount: 0, emailApproval: "none" };
   });
 }
@@ -859,7 +886,7 @@ function App() {
       s.emailTemplateVersion = EMAIL_TEMPLATE_VERSION;
     }
     s.prospects = s.prospects.map((p) => ({
-      decisionMaker: "", linkedIn: "", emailApproval: "none", competitors: "", emailSubject: "", emailBody: "",
+      decisionMaker: "", linkedIn: "", emailApproval: "none", competitors: "", emailSubject: "", emailBody: "", followUpDate: "",
       ...p,
       competitors: p.competitors || COMPETITORS[p.name] || "",
       status: STATUS_MIGRATE[p.status] || p.status || "new",
@@ -1274,6 +1301,49 @@ function Drawer({ prospect, state, patch, flash, onClose, onDelete, admin }) {
   });
   const setApproval = (val) => setField("emailApproval", val);
 
+  // ---- follow-up reminders ----
+  const canRemind = typeof window !== "undefined" && typeof window.__oxeScheduleReminder === "function";
+  const reminderTo = (typeof window !== "undefined" && window.__OXE_USER__) || "your inbox";
+  const reminderBody = () => [
+    `Time to follow up with ${prospect.name}${prospect.country ? " (" + prospect.country + ")" : ""}.`,
+    prospect.decisionMaker ? `Decision-maker: ${prospect.decisionMaker}` : "",
+    prospect.contactEmail ? `Contact: ${prospect.contactEmail}` : "",
+    prospect.linkedIn ? `LinkedIn: ${prospect.linkedIn}` : "",
+    prospect.notes ? `Notes: ${prospect.notes}` : "",
+    "",
+    "— OxeFit Distribution Builder",
+  ].filter(Boolean).join("\n");
+  const scheduleReminder = async () => {
+    if (!prospect.followUpDate) return;
+    const whenISO = new Date(prospect.followUpDate + "T08:00:00").toISOString();
+    const subj = `Follow up: ${prospect.name}${prospect.country ? " (" + prospect.country + ")" : ""}`;
+    flash("Scheduling reminder…");
+    try {
+      const ok = await window.__oxeScheduleReminder(whenISO, subj, reminderBody());
+      flash(ok === false ? "Couldn't schedule — try .ics instead" : `Email reminder set for ${prospect.followUpDate}`);
+    } catch (e) { flash("Couldn't schedule reminder"); }
+  };
+  const downloadIcs = () => {
+    if (!prospect.followUpDate) return;
+    const d = prospect.followUpDate.replace(/-/g, "");
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
+    const esc = (s) => (s || "").replace(/[\\,;]/g, (m) => "\\" + m).replace(/\n/g, "\\n");
+    const ics = [
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//OxeFit//Distribution Builder//EN", "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT", `UID:oxe-${prospect.id}@core-velocity`, `DTSTAMP:${stamp}`,
+      `DTSTART:${d}T090000`, `DTEND:${d}T093000`,
+      `SUMMARY:${esc("Follow up: " + prospect.name)}`,
+      `DESCRIPTION:${esc(reminderBody())}`,
+      "BEGIN:VALARM", "TRIGGER:-PT30M", "ACTION:DISPLAY", "DESCRIPTION:Follow-up reminder", "END:VALARM",
+      "END:VEVENT", "END:VCALENDAR",
+    ].join("\r\n");
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `followup-${prospect.name.replace(/[^\w]+/g, "_")}.ics`; a.click();
+    URL.revokeObjectURL(url);
+    flash("Calendar reminder (.ics) downloaded");
+  };
+
   // logs an actual send: advances communication status + follow-up timer + approval=sent
   const logSent = () => patch((n) => {
     const p = n.prospects.find((x) => x.id === prospect.id);
@@ -1399,6 +1469,26 @@ function Drawer({ prospect, state, patch, flash, onClose, onDelete, admin }) {
               <div><span className="muted">Last</span><b>{prospect.lastContacted || "—"}</b></div>
             </div>
             <SelectField label="Update status" value={prospect.status} onChange={(v) => setField("status", v)} options={Object.keys(STATUS)} render={(k) => STATUS[k].label} />
+
+            <div className="sectionLabel">Follow-up reminder</div>
+            <label className="field">
+              <span>Follow-up date</span>
+              <input type="date" value={prospect.followUpDate || ""} onChange={(e) => setField("followUpDate", e.target.value)} />
+            </label>
+            {prospect.followUpDate && (() => {
+              const fu = followUpState(prospect, state.cadence);
+              const txt = !fu ? "" : fu.kind === "overdue" ? `Overdue by ${fu.days} day${fu.days > 1 ? "s" : ""}`
+                : fu.kind === "soon" ? `Due in ${fu.days} day${fu.days !== 1 ? "s" : ""}` : `Scheduled · ${fu.days} days away`;
+              return <div className={`fuNote ${fu ? fu.kind : ""}`}>{txt}</div>;
+            })()}
+            <div className="mailActions">
+              {canRemind && <button className="btn primary" onClick={scheduleReminder} disabled={!prospect.followUpDate}>📧 Email me a reminder</button>}
+              <button className="btn ghost" onClick={downloadIcs} disabled={!prospect.followUpDate}>📅 Add to calendar (.ics)</button>
+              {prospect.followUpDate && <button className="btn ghost small" onClick={() => setField("followUpDate", "")}>Clear</button>}
+            </div>
+            <p className="finePrint">{canRemind
+              ? `"Email me a reminder" schedules an email to ${reminderTo} for 8am on your follow-up date — it arrives even if this tool is closed. ".ics" adds it to your Outlook calendar with an alert.`
+              : `".ics" adds this to your Outlook/calendar with an alert. (Sign in with Microsoft to also schedule an email reminder.)`}</p>
 
             <div className="sectionLabel">Email — edit before approving</div>
             <div className="mailField"><span className="muted small">To</span><div className="mailSubject">{to || "⚠ add a contact email"}</div></div>
@@ -2074,6 +2164,10 @@ a.btn{text-decoration:none;display:inline-block}
 /* badges */
 .statusBadge{font-size:11px;font-weight:600;border:1px solid;padding:3px 9px;border-radius:99px;white-space:nowrap}
 .fuBadge{font-size:12px;font-weight:600;font-family:var(--mono);display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.fuNote{font-size:12.5px;font-weight:600;margin:8px 0 2px;color:var(--muted)}
+.fuNote.overdue{color:var(--red)}
+.fuNote.soon{color:var(--accent)}
+.fuNote.scheduled{color:var(--muted)}
 .muted{color:var(--muted)}
 .small{font-size:12px}
 
